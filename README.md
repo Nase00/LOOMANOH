@@ -1,4 +1,4 @@
-# **L**ook **MA NO H**ands
+# **LOO**k **MA NO H**ands
 
 ## RJ45 Pin Configuration
 
