@@ -1,28 +1,33 @@
-// Partially adapted from https://github.com/bbx10/WebServer_tng/blob/master/examples/AdvancedWebServer/AdvancedWebServer.ino
-
+#include <Wire.h>
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
+
+#define PORT 3000
 
 #ifdef ESP8266
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
-ESP8266WebServer server(80);
+ESP8266WebServer server(PORT);
 #else
 #include <ESPmDNS.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-WebServer server(80);
+WebServer server(PORT);
 #endif
 
 #include "secrets.h"
 
-#define PIN 2
+#define PIN_DOWN 27
+#define PIN_UP 33
+#define PIN_PRESET_2 13
+#define PIN_NEOMATRIX 14
 
 #define UP "UP"
 #define DOWN "DOWN"
+#define PRESET_2 "PRESET_2"
 
 // Neomatrix configuration
 #define MATRIX_TILE_WIDTH 8  // width of each individual matrix tile
@@ -35,7 +40,9 @@ WebServer server(80);
 
 int x = mw;
 int pass = 0;
-char direction[64] = UP;
+String direction = UP;
+String delayMS;
+int pin;
 
 uint8_t matrix_brightness = 40;
 CRGB matrixleds[NUMMATRIX];
@@ -46,18 +53,22 @@ FastLED_NeoMatrix *matrix = new FastLED_NeoMatrix(
     MATRIX_TILE_V,
     NEO_MATRIX_BOTTOM + NEO_MATRIX_RIGHT + NEO_MATRIX_COLUMNS + NEO_MATRIX_PROGRESSIVE + NEO_TILE_TOP + NEO_TILE_LEFT + NEO_TILE_ZIGZAG);
 
-const uint16_t colors[] = {
-  matrix->Color(255, 0, 0),
-  matrix->Color(0, 255, 0),
-  matrix->Color(0, 0, 255)
-};
-
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
-  FastLED.addLeds<NEOPIXEL, PIN>(matrixleds, NUMMATRIX);
+  FastLED.addLeds<NEOPIXEL, PIN_NEOMATRIX>(matrixleds, NUMMATRIX);
   matrix->begin();
   matrix->setBrightness(matrix_brightness);
+  matrix->fillScreen(0);
+  matrix->show();
+
+  pinMode(PIN_DOWN, OUTPUT);
+  pinMode(PIN_UP, OUTPUT);
+  pinMode(PIN_PRESET_2, OUTPUT);
+
+  digitalWrite(PIN_DOWN, LOW);
+  digitalWrite(PIN_UP, LOW);
+  digitalWrite(PIN_PRESET_2, LOW);
 
   WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -73,10 +84,10 @@ void setup() {
     Serial.println("MDNS responder started");
   }
 
-  server.on("/", handleRoot);
+  server.on("/move", handleMove);
   server.onNotFound(handleNotFound);
 
-  const char *headerkeys[] = { "direction" };
+  const char *headerkeys[] = { "direction", "ms" };
   size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
   server.collectHeaders(headerkeys, headerkeyssize);
 
@@ -85,41 +96,13 @@ void setup() {
 }
 
 void loop() {
+  // TODO
+  // Serial.parseInt();
   logDeviceData();
 
-// TODO uncomment and move drawArrow into server handler
-//  server.handleClient();
-
-  drawArrow();
+  server.handleClient();
 
   delay(125);
-}
-
-void handleRoot() {
-  Serial.println("Enter handleRoot");
-  String header;
-  String content = "Successfully connected to device. ";
-
-  if (server.hasHeader("direction")) {
-    content += "Direction: " + server.header("direction");
-
-    server.header("direction").toCharArray(direction, 64);
-    server.send(200, "text/html", content);
-  } else {
-    content += "No \"direction\" header found.";
-    server.send(500, "text/html", content);
-  }
-}
-
-void logDeviceData() {
-  Serial.print("Device IP: ");
-  Serial.println(WiFi.localIP());
-
-  Serial.print("Device MAC: ");
-  Serial.println(WiFi.macAddress());
-
-  Serial.print("Memory heap: ");
-  Serial.println(ESP.getFreeHeap());
 }
 
 void handleNotFound() {
@@ -139,11 +122,93 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
-// TODO make into an arrow
-void drawArrow() {
-  matrixleds[1].setRGB(0, 100, 0);
-  matrixleds[2].setRGB(100, 0, 0);
-  matrixleds[3].setRGB(0, 0, 100);
+void logDeviceData() {
+  Serial.print("Device IP: ");
+  Serial.println(WiFi.localIP());
+
+  Serial.print("Device MAC: ");
+  Serial.println(WiFi.macAddress());
+
+  Serial.print("Memory heap: ");
+  Serial.println(ESP.getFreeHeap());
+}
+
+// TODO
+void drawUp() {
+  matrixleds[1].setRGB(30, 30, 0);
+  matrixleds[2].setRGB(30, 30, 0);
+  matrixleds[3].setRGB(30, 30, 0);
+  matrixleds[9].setRGB(30, 30, 0);
+  matrixleds[10].setRGB(30, 30, 0);
+  matrixleds[11].setRGB(30, 30, 0);
   matrix->show();
 }
 
+void drawDown() {
+  matrixleds[1].setRGB(0, 30, 0);
+  matrixleds[2].setRGB(0, 30, 0);
+  matrixleds[3].setRGB(0, 30, 0);
+  matrixleds[9].setRGB(0, 30, 0);
+  matrixleds[10].setRGB(0, 30, 0);
+  matrixleds[11].setRGB(0, 30, 0);
+  matrix->show();
+}
+
+void drawPreset2() {
+  matrixleds[1].setRGB(0, 30, 0);
+  matrixleds[2].setRGB(30, 0, 0);
+  matrixleds[3].setRGB(0, 0, 30);
+  matrixleds[9].setRGB(30, 30, 0);
+  matrixleds[10].setRGB(30, 0, 30);
+  matrixleds[11].setRGB(0, 30, 30);
+  matrix->show();
+}
+
+void writeInt(unsigned int value){
+    Wire.write(lowByte(value));
+    Wire.write(highByte(value));
+}
+
+void handleMove() {
+  Serial.println("Move request received");
+  String header;
+  String content = "Successfully connected to device. ";
+
+  if (server.hasHeader("direction")) {
+    direction = server.header("direction");
+    delayMS = server.header("ms");
+    Serial.print("DELAY: ");
+    Serial.println(delayMS);
+
+    // HTTP response
+    content += "Target: " + direction + " for " + delayMS + "ms";
+
+    // Serial logging
+    Serial.print("Requested to move to: "); Serial.println(direction); Serial.println(" for "); Serial.println(delayMS); Serial.println("ms");
+
+    if (direction == UP) {
+      drawUp();
+      pin = PIN_UP;
+    }
+    if (direction == DOWN) {
+      drawDown();
+      pin = PIN_DOWN;
+    }
+    if (direction == PRESET_2) {
+      drawPreset2();
+      pin = PIN_PRESET_2;
+    }
+
+    server.send(200, "text/html", content);
+
+    digitalWrite(pin, HIGH);
+    delay(delayMS.toInt());
+    digitalWrite(pin, LOW);
+
+    matrix->fillScreen(0);
+    matrix->show();
+  } else {
+    content += "No \"direction\" header found.";
+    server.send(500, "text/html", content);
+  }
+}
