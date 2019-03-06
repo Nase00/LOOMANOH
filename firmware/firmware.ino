@@ -20,10 +20,17 @@ WebServer server(PORT);
 
 #include "secrets.h"
 
+#ifdef ESP8266
+#define PIN_DOWN 0
+#define PIN_UP 16
+#define PIN_PRESET_2 15
+#define PIN_NEOMATRIX 2
+#else
 #define PIN_DOWN 27
 #define PIN_UP 33
 #define PIN_PRESET_2 13
 #define PIN_NEOMATRIX 14
+#endif
 
 #define UP "UP"
 #define DOWN "DOWN"
@@ -68,7 +75,7 @@ void setup() {
 
   digitalWrite(PIN_DOWN, LOW);
   digitalWrite(PIN_UP, LOW);
-  digitalWrite(PIN_PRESET_2, LOW);
+  digitalWrite(PIN_PRESET_2, HIGH);
 
   WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -96,8 +103,6 @@ void setup() {
 }
 
 void loop() {
-  // TODO
-  // Serial.parseInt();
   logDeviceData();
 
   server.handleClient();
@@ -135,32 +140,52 @@ void logDeviceData() {
 
 // TODO
 void drawUp() {
-  matrixleds[1].setRGB(30, 30, 0);
-  matrixleds[2].setRGB(30, 30, 0);
-  matrixleds[3].setRGB(30, 30, 0);
-  matrixleds[9].setRGB(30, 30, 0);
+  matrixleds[1].setRGB(30, 30, 30);
+  matrixleds[8].setRGB(30, 30, 0);
+  matrixleds[17].setRGB(30, 30, 30);
+  matrixleds[26].setRGB(30, 30, 0);
+
+  matrixleds[3].setRGB(30, 30, 30);
   matrixleds[10].setRGB(30, 30, 0);
-  matrixleds[11].setRGB(30, 30, 0);
+  matrixleds[19].setRGB(30, 30, 30);
+  matrixleds[28].setRGB(30, 30, 0);
+
+  matrixleds[5].setRGB(30, 30, 30);
+  matrixleds[12].setRGB(30, 30, 0);
+  matrixleds[21].setRGB(30, 30, 30);
+  matrixleds[30].setRGB(30, 30, 0);
+
   matrix->show();
 }
 
 void drawDown() {
-  matrixleds[1].setRGB(0, 30, 0);
-  matrixleds[2].setRGB(0, 30, 0);
-  matrixleds[3].setRGB(0, 30, 0);
-  matrixleds[9].setRGB(0, 30, 0);
-  matrixleds[10].setRGB(0, 30, 0);
-  matrixleds[11].setRGB(0, 30, 0);
+  matrixleds[6].setRGB(30, 30, 30);
+  matrixleds[15].setRGB(0, 60, 0);
+  matrixleds[22].setRGB(30, 30, 30);
+  matrixleds[29].setRGB(0, 60, 0);
+
+  matrixleds[4].setRGB(30, 30, 30);
+  matrixleds[13].setRGB(0, 60, 0);
+  matrixleds[20].setRGB(30, 30, 30);
+  matrixleds[27].setRGB(0, 60, 0);
+
+  matrixleds[2].setRGB(30, 30, 30);
+  matrixleds[11].setRGB(0, 60, 0);
+  matrixleds[18].setRGB(30, 30, 30);
+  matrixleds[25].setRGB(0, 60, 0);
+
   matrix->show();
 }
 
 void drawPreset2() {
-  matrixleds[1].setRGB(0, 30, 0);
-  matrixleds[2].setRGB(30, 0, 0);
-  matrixleds[3].setRGB(0, 0, 30);
-  matrixleds[9].setRGB(30, 30, 0);
-  matrixleds[10].setRGB(30, 0, 30);
-  matrixleds[11].setRGB(0, 30, 30);
+  for (uint8_t i = 0; i < NUMMATRIX; i++) {
+    if (i % 2 == 0) {
+      matrixleds[i].setRGB(30, 0, i * 4);
+    } else {
+      matrixleds[i].setRGB(i * 4, 0, 30);
+    }
+  }
+
   matrix->show();
 }
 
@@ -194,16 +219,22 @@ void handleMove() {
       drawDown();
       pin = PIN_DOWN;
     }
+
+    // TODO
+    // Read/write distinct height integers from/to preset pin
     if (direction == PRESET_2) {
-      drawPreset2();
-      pin = PIN_PRESET_2;
+        drawPreset2();
+
+        digitalWrite(PIN_PRESET_2, LOW);
+        delay(delayMS.toInt());
+        digitalWrite(PIN_PRESET_2, HIGH);
+    } else {
+        digitalWrite(pin, HIGH);
+        delay(delayMS.toInt());
+        digitalWrite(pin, LOW);
     }
 
     server.send(200, "text/html", content);
-
-    digitalWrite(pin, HIGH);
-    delay(delayMS.toInt());
-    digitalWrite(pin, LOW);
 
     matrix->fillScreen(0);
     matrix->show();
