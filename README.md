@@ -28,7 +28,7 @@
 
 ## Installing Muselsl
 
-This steps are probably incomplete. I only got Muselsl working on the Pi after several attempts and re-attempts using information like [this](https://github.com/alexandrebarachant/muse-lsl/issues/1). I started with a fresh copy of `2018-11-13-raspbian-stretch.img` on a Raspberry Pi 3 Model B+.
+These steps are probably incomplete. I only got Muselsl working on the Pi after several attempts and re-attempts using information like [this](https://github.com/alexandrebarachant/muse-lsl/issues/1). I started with a fresh copy of `2018-11-13-raspbian-stretch.img` on a Raspberry Pi 3 Model B+.
 
 ```bash
 # Preinstall dependencies for muselsl instead of letting Python compile them for ages.
